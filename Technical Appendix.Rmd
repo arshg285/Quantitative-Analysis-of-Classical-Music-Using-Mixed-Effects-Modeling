@@ -1,0 +1,1191 @@
+---
+title: "Technical Appendix"
+
+output:
+  pdf_document:
+    toc: false
+    number_sections: true
+    toc_depth: 1
+  fig_caption: yes
+  highlight: haddock
+  number_sections: true
+  df_print: paged
+  html_document:  
+    toc: false
+    toc_depth: '3'
+    df_print: paged
+fontfamiy: mathpazo
+editor_options: null
+chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+rm(list=ls(all=TRUE))
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60))
+options(rgl.printRglwidget = TRUE)
+```
+
+# Loading the libraries
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(leaps)
+library(MASS)
+library(foreign)
+library(lme4)
+library(knitr)
+library(HLMdiag)
+library(boot)
+library(arm)
+library(car)
+```
+
+```{r}
+ratings <- read.csv("ratings.csv")
+ratings <- ratings[-c(1, 26)]
+```
+
+## Exploring the data set
+
+## `Harmony`
+
++ Four unique values
+
+```{r}
+unique(ratings$Harmony)
+summary(ratings$Harmony)
+```
+
+## `Instrument`
+
++ Three unique values
+
+```{r}
+unique(ratings$Instrument)
+summary(ratings$Instrument)
+```
+
+## `Voice`
+
++ Three unique values
+
+```{r}
+unique(ratings$Voice)
+summary(ratings$Voice)
+```
+
+## `Selfdeclare`
+
++ $6$ unique values
+
++ $2$ is most common
+
++ Mean value is $2.443$
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$Selfdeclare)
+summary(ratings$Selfdeclare)
+hist(ratings$Selfdeclare)
+```
+
+## `OMSI`
+
++ $60$ unique values
+
++ Mean is $145.5$
+
++ Histogram is right skewed
+
+```{r, out.width="60%", fig.align="center"}
+length(sort(unique(ratings$OMSI)))
+sort(unique(ratings$OMSI))
+summary(ratings$OMSI)
+hist(ratings$OMSI)
+```
+
+## `X16.minus.17`
+
++ $13$ unique values
+
++ Mean is $1.721$
+
++ Histogram has slight right skewed
+
+```{r, out.width="60%", fig.align="center"}
+length(sort(unique(ratings$X16.minus.17)))
+sort(unique(ratings$X16.minus.17))
+summary(ratings$X16.minus.17)
+hist(ratings$X16.minus.17)
+```
+
+## `ConsInstr`
+
++ $14$ unique values
+
++ Mean is $2.857$
+
++ Histogram is mostly uniformly distributed
+
+```{r, out.width="60%", fig.align="center"}
+length(sort(unique(ratings$ConsInstr)))
+sort(unique(ratings$ConsInstr))
+summary(ratings$ConsInstr)
+hist(ratings$ConsInstr)
+```
+
+## `ConsNotes`
+
++ $5$ factor levels with some NA values
+
++ Mean is $2.533$
+
++ Histogram has three peaks and values $0, 3$, and $5$ are most common
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$ConsNotes)
+summary(ratings$ConsNotes)
+hist(ratings$ConsNotes)
+```
+
+## `Instr.minus.Notes`
+
++ $20$ unique values
+
++ Mean is $0.6857$
+
++ Distribution is normal with one peak
+
+```{r, out.width="60%", fig.align="center"}
+length(sort(unique(ratings$Instr.minus.Notes)))
+sort(unique(ratings$Instr.minus.Notes))
+summary(ratings$Instr.minus.Notes)
+hist(ratings$Instr.minus.Notes)
+```
+
+## `PachListen`
+
++ $6$ factor levels with some NA values
+
++ Mean is $4.515$
+
++ $5$ is most common
+
++ Distribution is highly left skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$PachListen)
+summary(ratings$PachListen)
+hist(ratings$PachListen)
+```
+
+## `ClsListen`
+
++ $6$ factor levels with some NA values
+
++ Mean is $2.159$
+
++ $1$ and $3$ are most common
+
++ Histogram has three peaks
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$ClsListen)
+summary(ratings$ClsListen)
+hist(ratings$ClsListen)
+```
+
+## `KnowRob`
+
++ $6$ factor levels with some NA values
+
++ Mean is $0.7692$
+
++ $0$ is most common
+
++ Histogram has one peak and is highly right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$KnowRob)
+summary(ratings$KnowRob)
+hist(ratings$KnowRob)
+```
+
+## `KnowAxis`
+
++ $6$ factor levels with some NA values
+
++ Mean is $0.9032$
+
++ $0$ is most common
+
++ Histogram has one peak and is highly right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$KnowAxis)
+summary(ratings$KnowAxis)
+hist(ratings$KnowAxis)
+```
+
+## `X1990s2000s`
+
++ $6$ factor levels with some NA values
+
++ Mean is $4.061$
+
++ $5$ is most common
+
++ Histogram has one peak and is highly left skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$X1990s2000s)
+summary(ratings$X1990s2000s)
+hist(ratings$X1990s2000s)
+```
+
+## `X1990s2000s.minus.1960s1970s`
+
++ $9$ unique values with some NA values
+
++ Mean is $2.015$
+
++ $0$ and $3$ are most common
+
++ Histogram has mostly uniformly distributed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$X1990s2000s.minus.1960s1970s)
+summary(ratings$X1990s2000s.minus.1960s1970s)
+hist(ratings$X1990s2000s.minus.1960s1970s)
+```
+
+## `CollegeMusic`
+
++ $2$ factor levels with some NA values
+
++ Mean is $0.791 > 0.5$ meaning $1$ is more common than $0$
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$CollegeMusic)
+summary(ratings$CollegeMusic)
+hist(ratings$CollegeMusic)
+```
+
+## `NoClass`
+
++ $6$ factor levels with some NA values
+
++ Mean is $0.9194$
+
++ Histogram is highly right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$NoClass)
+summary(ratings$NoClass)
+hist(ratings$NoClass)
+```
+
+## `APTheory`
+
++ $2$ factor levels with some NA values
+
++ Mean is $0.2344 < 0.5$ meaning $0$ is more common than $1$
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$APTheory)
+summary(ratings$APTheory)
+hist(ratings$APTheory)
+```
+
+## `Composing`
+
++ $6$ factor levels with some NA values
+
++ Mean is $1$
+
++ Histogram is highly right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$Composing)
+summary(ratings$Composing)
+hist(ratings$Composing)
+```
+
+## `PianoPlay`
+
++ $6$ factor levels with no NA values
+
++ Mean is $1.086$
+
++ Histogram is right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$PianoPlay)
+summary(ratings$PianoPlay)
+hist(ratings$PianoPlay)
+```
+
+## `GuitarPlay`
+
++ $6$ factor levels with no NA values
+
++ Mean is $0.6857$
+
++ Histogram is highly right skewed
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$GuitarPlay)
+summary(ratings$GuitarPlay)
+hist(ratings$GuitarPlay)
+```
+
+## `X1stInstr`
+
++ $6$ factor levels with some NA values
+
++ Mean is $2.786$
+
++ $1$ and $4$ are most common values
+
++ Histogram is has no skew and two peaks
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$X1stInstr)
+summary(ratings$X1stInstr)
+hist(ratings$X1stInstr)
+```
+
+## `X1stInstr`
+
++ $6$ factor levels with some NA values
+
++ Mean is $1.556$
+
++ $1$ is the most common value
+
++ Histogram is right skewed with one peak
+
+```{r, out.width="60%", fig.align="center"}
+unique(ratings$X2ndInstr)
+summary(ratings$X2ndInstr)
+hist(ratings$X2ndInstr)
+```
+
+## `Classical`
+
++ $17$ unique values with some NA values
+
++ One of the unique values is $19$, which is greater than the scale that the participants were presented with. We see that it occurs only once, so it can be reasonably inferred that this might be an error input. Hence, we will remove it from our data set
+
++ Mean is $5.783$
+
++ Distribution is normal
+
+```{r, out.width="60%", fig.align="center"}
+length(unique(ratings$Classical))
+unique(ratings$Classical)
+summary(ratings$Classical)
+count(ratings[which(ratings$Classical > 10), ])
+hist(ratings$Classical, xlim = c(0, 10))
+```
+
+## `Popular`
+
++ $17$ unique values with some NA values
+
++ One of the unique values is $19$, which is greater than the scale that the participants were presented with. We see that it occurs only once, so it can be reasonably inferred that this might be an error input. Hence, we will remove it from our data set
+
++ Mean is $5.381$
+
++ Distribution is normal
+
+```{r, out.width="60%", fig.align="center"}
+length(unique(ratings$Popular))
+unique(ratings$Popular)
+summary(ratings$Popular)
+count(ratings[which(ratings$Popular > 10), ])
+hist(ratings$Popular, xlim = c(0, 10))
+```
+
+## Creating a preliminary OLS mode
+
+We first create a linear model including three-way interactions between all the predictors `Instrument`, `Harmony`, and `Voice`. Upon running the `anova()` function, we see that the only interaction that is statistically significant at the $5\%$ level of significance is `Harmony:Voice`, we keep only that. Then, we run the `anova()` function between the current and previous model to compare performance, which confirms that the second model is better.
+
+```{r}
+model_1 <- lm(Classical ~ Instrument * Harmony * Voice, 
+              data = ratings)
+
+anova(model_1)
+
+model_2 <- lm(Classical ~ Instrument + Harmony + Voice + Harmony:Voice, 
+              data = ratings)
+
+anova(model_1, model_2)
+```
+
+## Creating a multi-level model
+
+We then create a multi-level model with only a random intercept for each individual.
+
+```{r}
+multilevel_model_1 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject), 
+                           data = ratings, 
+                           REML = FALSE)
+```
+
+## Examining the performance of MLM
+
+We examine the influence of the three main experimental factors on the initial MLM using couple of approaches:
+
++ \textbf{ANOVA:} We run the `anova()` function which confirms that the effect of these three experimental factors is significant.
+
++ \textbf{Plotting residuals:} We plot the conditional and marginal residuals as a function of conditional and fitted values respectively. The smooth fitted line for both is almost a horizontal line centered at zero suggesting that the data fits our current model well.
+
++ \textbf{Checking normality:} The standardized residuals and standardized random effects are normally distributed suggesting a good fit.
+
++ \textbf{Fixed and random effect variances:} From the `summary()` output, we see that $\hat{\tau}^2_0 = 1.678$ and $\hat{\sigma}^2_0 = 3.537$. While these are not as low as we would like, suggesting possible scope of improvement within the model, it is a good starting point.
+
++ \textbf{AIC/BIC:} Upon computing the AIC and BIC for the OLS `lm()` model and multi-level `lmer()` model, we see that the `lmer()` model has lower values for both AIC and BIC relative to the `lm()` model.
+
+Based on the above findings, we decide that including the random effects part has improved the original model and thus we will keep it.
+
+```{r}
+anova(multilevel_model_1)
+summary(multilevel_model_1)
+
+residuals_11 <- hlm_resid(multilevel_model_1, 
+                          level = 1, 
+                          include.ls = F)
+
+residuals_11_std <- hlm_resid(multilevel_model_1, 
+                              level = 1, 
+                              include.ls = F, 
+                              standardize = T)
+
+residuals_12 <- hlm_resid(multilevel_model_1, 
+                          level = "Subject", 
+                          include.ls = F)
+
+residuals_12_std <- hlm_resid(multilevel_model_1, 
+                              level = "Subject", 
+                              include.ls = F, 
+                              standardize = T)
+
+std_resid <- residuals_11_std$.std.resid
+std_ranef_intercept <- residuals_12_std$.std.ranef.intercept
+
+conditional_plot_1 <- ggplot(data = as.data.frame(residuals_11), 
+                             mapping = aes(y = residuals_11$.resid, 
+                                           residuals_11$.fitted)) +
+  xlab("Conditional Fitted Values") +
+  ylab("Conditional Residual Values") +
+  ggtitle("Conditional residuals as a function of conditional fitted values") +
+  geom_point(pch = 20) +
+  geom_smooth()
+
+conditional_plot_1
+ggsave('conditional_plot_1.png')
+
+marginal_plot_1 <- ggplot(data = as.data.frame(residuals_11), 
+                          mapping = aes(y = residuals_11$.mar.resid, 
+                                        x = residuals_11$.mar.fitted)) +
+  xlab("Marginal Fitted Values") +
+  ylab("Marginal Residual Values") +
+  ggtitle("Marginal residuals as a function of marginal fitted values") +
+  geom_point(pch = 20) +
+  geom_smooth()
+
+marginal_plot_1
+ggsave('marginal_plot_1.png')
+
+params <- data.frame(cbind(std_resid, std_ranef_intercept))
+
+plot_std_resid_1 <- params %>%
+  ggplot(aes(sample = std_resid)) +
+  stat_qq() +
+  xlab("Standardized Residuals") +
+  ylab("Quantiles") +
+  ggtitle("Normality of standardized residuals") +
+  stat_qq_line()
+
+plot_std_resid_1
+ggsave('plot_std_resid_1.png')
+
+plot_std_ranef_intercept_1 <- params %>%
+  ggplot(aes(sample = std_ranef_intercept)) +
+  stat_qq() +
+  xlab("Standardized Random Effects for Intercept") +
+  ylab("Quantiles") +
+  ggtitle("Normality of standardized random effects for Intercept") +
+  stat_qq_line()
+
+plot_std_ranef_intercept_1
+ggsave('plot_std_ranef_intercept_1.png')
+```
+
+```{r}
+AIC_BIC_DIC <- cbind(AIC = sapply(list(model_2, multilevel_model_1), 
+                                  AIC),
+                   
+                   BIC = sapply(list(model_2, multilevel_model_1), 
+                                  BIC),
+                   
+                   DIC = sapply(list(multilevel_model_1, multilevel_model_1), 
+                                  extractDIC))
+
+AIC_BIC_DIC <- t(as.tibble(AIC_BIC_DIC))
+AIC_BIC_DIC[3, 1] = AIC_BIC_DIC[1, 1]
+colnames(AIC_BIC_DIC) <- c("model_2", "multilevel_model_1")
+kable(t(AIC_BIC_DIC), digits = 2)
+```
+
+## Evaluating random effects for `Instrument, Harmony,` and `Voice`
+
+As a next step, we test if our model could be improved by adding random slops for the three design variables. This is done by creating seven new `lmer()` models as follows in which we have included varying combinations of random effects for person/instrument, person/harmony, and person/voice. Upon computing the AIC, BIC, and DIC values for them all, we see that the multi-level model containing the random effect estimates for `(1 | Subject) + (0 + Instrument | Subject) + (0 + Harmony | Subject)` is the one yielding minimum values for all three of those. Thus, we will choose this as the best one so far.
+
+```{r}
+multilevel_model_2 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Instrument | Subject) + 
+                             (0 + Harmony | Subject) + 
+                             (0 + Voice | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_3 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Instrument | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_4 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Harmony | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_5 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Voice | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_6 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Instrument | Subject) + 
+                             (0 + Harmony | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_7 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) + 
+                             (0 + Instrument | Subject) + 
+                             (0 + Voice | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_8 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 | Subject) +  
+                             (0 + Harmony | Subject) + 
+                             (0 + Voice | Subject),
+                           data = ratings,
+                           REML = FALSE)
+```
+
+```{r}
+AIC_BIC_DIC <- cbind(AIC = sapply(list(multilevel_model_2, 
+                                       multilevel_model_3, 
+                                       multilevel_model_4, 
+                                       multilevel_model_5, 
+                                       multilevel_model_6, 
+                                       multilevel_model_7, 
+                                       multilevel_model_8), 
+                                  AIC),
+                   
+                   BIC = sapply(list(multilevel_model_2, 
+                                     multilevel_model_3, 
+                                     multilevel_model_4, 
+                                     multilevel_model_5, 
+                                     multilevel_model_6, 
+                                     multilevel_model_7, 
+                                     multilevel_model_8), 
+                                  BIC),
+                   
+                   DIC = sapply(list(multilevel_model_2, 
+                                     multilevel_model_3, 
+                                     multilevel_model_4, 
+                                     multilevel_model_5, 
+                                     multilevel_model_6, 
+                                     multilevel_model_7, 
+                                     multilevel_model_8), 
+                                  extractDIC))
+
+AIC_BIC_DIC <- t(as.tibble(AIC_BIC_DIC))
+colnames(AIC_BIC_DIC) <- c("multilevel_model_2", 
+                           "multilevel_model_3", 
+                           "multilevel_model_4", 
+                           "multilevel_model_5", 
+                           "multilevel_model_6", 
+                           "multilevel_model_7", 
+                           "multilevel_model_8")
+kable(t(AIC_BIC_DIC), digits = 2)
+```
+
+## Examining the performance of MLM
+
+We examine the influence of the three main experimental factors in our updated MLM using couple of approaches:
+
++ \textbf{ANOVA:} we run the `anova()` function which confirms that the effect of these three experimental factors is significant.
+
++ \textbf{Plotting residuals:} we plot the conditional and marginal residuals as a function of conditional and fitted values respectively. The smooth fitted line for both is almost a horizontal line centered at zero suggesting that the data fits our current model well.
+
++ \textbf{Checking normality:} The standardized residuals show a normal fit with some outliers on either tails but they do not seem to pose a big issue.
+
++ \textbf{Fixed and random effect variances:} From the `summary()` output, we see that $\hat{\sigma}^2_0 = 2.539209$, $\hat{\tau}^2_1 = 1.63176$, $\hat{\tau}^2_3 = 3.509338$, $\hat{\tau}^2_4 = 3.1353 \times 10^{-2}$, $\hat{\tau}^2_5 = 1.534336$, and $\hat{\tau}^2_6 = 4.644 \times 10^{-3}$.
+
+These do seem to be an improvement from the previous multi-level model that we had.
+
+```{r}
+multilevel_model_6 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             (1 + Instrument + Harmony | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+anova(multilevel_model_6)
+summary(multilevel_model_6)
+
+residuals_21 <- hlm_resid(multilevel_model_6, 
+                          level = 1, 
+                          include.ls = F)
+
+residuals_21_std <- hlm_resid(multilevel_model_6, 
+                              level = 1, 
+                              include.ls = F, 
+                              standardize = T)
+
+residuals_22 <- hlm_resid(multilevel_model_6, 
+                          level = "Subject", 
+                          include.ls = F)
+
+conditional_plot_2 <- ggplot(data = as.data.frame(residuals_21), 
+                             mapping = aes(y = residuals_21$.resid, 
+                                           residuals_21$.fitted)) +
+  xlab("Conditional Fitted Values") +
+  ylab("Conditional Residual Values") +
+  ggtitle("Conditional residuals as a function of conditional fitted values") +
+  geom_point(pch = 20) +
+  geom_smooth()
+
+conditional_plot_2
+ggsave('conditional_plot_2.png')
+
+marginal_plot_2 <- ggplot(data = as.data.frame(residuals_21), 
+                          mapping = aes(y = residuals_21$.mar.resid, 
+                                        x = residuals_21$.mar.fitted)) +
+  xlab("Marginal Fitted Values") +
+  ylab("Marginal Residual Values") +
+  ggtitle("Marginal residuals as a function of marginal fitted values") +
+  geom_point(pch = 20) +
+  geom_smooth()
+
+marginal_plot_2
+ggsave('marginal_plot_2.png')
+
+std_resid <- residuals_21_std$.std.resid
+params <- data.frame(cbind(std_resid))
+
+plot_std_resid_1 <- params %>%
+  ggplot(aes(sample = std_resid)) +
+  stat_qq() +
+  xlab("Standardized Residuals") +
+  ylab("Quantiles") +
+  ggtitle("Normality of standardized residuals") +
+  stat_qq_line()
+
+plot_std_resid_1
+ggsave('plot_std_resid_1.png')
+```
+
+## Selecting covariates for fixed effects in model
+
+In order to determine which person covariates should be added to the model as fixed effects, we will first only consider the fixed effects part of our multi-level model as described above and treat is as an OLS `lm()` function to perform analyses. we will perform `regsubsets()` on it to determine the optimal subset of person covariates that should be included in the model.
+
+The model with the lowest BIC has the following covariates: `Harmony`, `Instrument`, `Voice`, `KnowAxis`.
+
+The model with the lowest AIC has the following covariates: `Harmony`, `Instrument`, `Voice`, `SelfDeclare`, `X1990s2000s.minus.1960s1970s`, `GuitarPlay`, `X2ndInstr`
+
+We will include all the covariates as selected by the lowest AIC and BIC models, and add them as fixed level predictors within my chosen multi-level model.
+
+```{r}
+regsubsets <- regsubsets(Classical ~ 
+                           Harmony + 
+                           Instrument + 
+                           Voice + 
+                           Selfdeclare + 
+                           OMSI + 
+                           X16.minus.17 + 
+                           ConsInstr + 
+                           ConsNotes + 
+                           Instr.minus.Notes + 
+                           PachListen + 
+                           ClsListen + 
+                           KnowRob + 
+                           KnowAxis + 
+                           X1990s2000s + 
+                           X1990s2000s.minus.1960s1970s + 
+                           CollegeMusic + 
+                           NoClass + 
+                           APTheory + 
+                           Composing + 
+                           PianoPlay + 
+                           GuitarPlay + 
+                           X1stInstr + 
+                           X2ndInstr,
+                         data = ratings, 
+                         method = "exhaustive",
+                         really.big = T,
+                         nvmax = 99)
+
+p <- dim(summary(regsubsets)$which)[2]
+n <- dim(ratings)[1]
+
+aic <- n * log(summary(regsubsets)$rss) + 2 * (p + 2)
+
+results <- data.frame(summary(regsubsets)$which, 
+                      BIC = summary(regsubsets)$bic, 
+                      AIC = aic)
+
+results[which(results$AIC == min(results$AIC) | results$BIC == min(results$BIC)), ]
+```
+
+## Analyzing for changes in random effects on the model
+
+In order to see if there should be any changes in the random effects, we implement an idea similar to \textbf{forward selection} but using DIC. The idea here is that we first add create six new models each containing one of the new predictors added under the fixed effects part of the model. we then compare the DIC for all these models and if the lowest DIC of these models containing the new predictor in the random effects part is lower than the DIC of the base model without any of the new predictors in its random effects part, then we add that predictor into the random effects. Taking that model then as the base, we repeat the process where we create five new models each containing one of the new predictors added and compare their DICs with that of the model selected in previous step.
+
+Our findings are as follows:
+
+\textbf{Step 1:} Model with random effects part `(1 + Instrument + Harmony + KnowAxis | Subject)` has lowest DIC among all models, lower than the previous `(1 + Instrument + Harmony | Subject)`, so we select that.
+
+\textbf{Step 2:} Model with random effects part `(1 + Instrument + Harmony + KnowAxis + X2ndInstr | Subject)` has the lowest DIC among all models, but not lower than the best model selected at previous step with fixed effects part `(1 + Instrument + Harmony + KnowAxis | Subject)`. Thus, our optimal model does not change.
+
+## Step 1: Add `KnowAxis` as a random effect covariate
+
+```{r}
+multilevel_model_7 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_8 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(Selfdeclare) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_9 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_10 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + X1990s2000s.minus.1960s1970s | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_11 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(GuitarPlay) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_12 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(X2ndInstr) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+DIC <- cbind(DIC = sapply(list(multilevel_model_7, 
+                               multilevel_model_8, 
+                               multilevel_model_9, 
+                               multilevel_model_10, 
+                               multilevel_model_11, 
+                               multilevel_model_12), 
+                          extractDIC))
+
+DIC <- t(as.tibble(DIC))
+colnames(DIC) <- c("multilevel_model_7", 
+                   "multilevel_model_8", 
+                   "multilevel_model_9", 
+                   "multilevel_model_10", 
+                   "multilevel_model_11", 
+                   "multilevel_model_12")
+kable(t(DIC), digits = 3)
+```
+
+## Step 2: Add `X2ndInstr` as a random effect covariate
+
+```{r}
+multilevel_model_13 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) + as.factor(Selfdeclare) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_14 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) + X1990s2000s.minus.1960s1970s | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_15 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) + as.factor(GuitarPlay) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_16 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             as.factor(Selfdeclare) + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) + as.factor(X2ndInstr) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+DIC <- cbind(DIC = sapply(list(multilevel_model_9, 
+                               multilevel_model_13, 
+                               multilevel_model_14, 
+                               multilevel_model_15, 
+                               multilevel_model_16), 
+                          extractDIC))
+
+DIC <- t(as.tibble(DIC))
+colnames(DIC) <- c("multilevel_model_9", 
+                   "multilevel_model_13", 
+                   "multilevel_model_14", 
+                   "multilevel_model_15", 
+                   "multilevel_model_16")
+kable(t(DIC), digits = 3)
+```
+
+## Testing second hypothesis
+
+Upon running the function `count()` and doing some preliminary analysis on the data set we see that about $60\%$ of the survey participants have selected a value of $1$ or $2$ for `Selfdeclare`, and the remaining $40\%$ have selected $3, 4,$ or $5$. Thus, we dichotomize that variable by creating a new variable called `self_declared_musician` where:
+
++ `self_declared_musician = yes`, if `Selfdeclare` $\in \{1, 2\}$
+
++ `self_declared_musician = no`, if `Selfdeclare` $\in \{3, 4, 5\}$
+
+We then replace the variable `Selfdeclare` with as the fixed level covariate in our model for the purpose of this exercise.
+
+Then, in order to see which interactions with `self_declared_musician` on the fixed level are useful, we ucreate new models where each of them contains an interaction with `self_declared_musician` and one of the other fixed level covariates, and compare the AIC and BIC with the base level model which has no interactions with `self_declared_musician`. If any model containing interaction with `self_declared_musician` has a lower AIC/BIC than the base-level model, then it would suggest that the dichotomized musician variable is sensitive to interaction with that other fixed level covariate.
+
+We find that the models containing interaction terms `self_declared_musician:Instrument` and `self_declared_musician:Harmony` have a lower AIC than the model not containing any interaction terms with `self_declared_musician` and the other fixed level covariates, suggesting that `Instrument` and `Harmony` are sensitive to the dichotomization of `self_declared_musiciant`. Out of these  two, the model containing the interaction term `self_declared_musician:Instrument` has a lower BIC suggesting that `Instrument` is the most sensitive.
+
+\textbf{Contextual interpretation:} What this means is that the type of instrument that an individual plays could be influential towards whether they consider themselves as a musician or not.
+
+```{r}
+ratings$self_declared_musician <- ifelse(ratings$Selfdeclare <= 2, "no", "yes")
+
+multilevel_model_17 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_18 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:Instrument + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_19 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:Harmony + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_20 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:Voice + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_21 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:as.factor(KnowAxis) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_22 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:X1990s2000s.minus.1960s1970s + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_23 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:as.factor(GuitarPlay) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+multilevel_model_24 <- lmer(Classical ~ 
+                             Instrument + 
+                             Harmony + 
+                             Voice + 
+                             Harmony:Voice + 
+                             self_declared_musician + 
+                             as.factor(KnowAxis) + 
+                             X1990s2000s.minus.1960s1970s + 
+                             as.factor(GuitarPlay) + 
+                             as.factor(X2ndInstr) + 
+                             self_declared_musician:as.factor(X2ndInstr) + 
+                             (1 + Instrument + Harmony + as.factor(KnowAxis) | Subject),
+                           data = ratings,
+                           REML = FALSE)
+
+AIC_BIC <- cbind(AIC = sapply(list(multilevel_model_17, 
+                                   multilevel_model_18, 
+                                   multilevel_model_19, 
+                                   multilevel_model_20, 
+                                   multilevel_model_21, 
+                                   multilevel_model_22, 
+                                   multilevel_model_23, 
+                                   multilevel_model_24), 
+                              AIC),
+                 
+                 BIC = sapply(list(multilevel_model_17, 
+                                   multilevel_model_18, 
+                                   multilevel_model_19, 
+                                   multilevel_model_20, 
+                                   multilevel_model_21, 
+                                   multilevel_model_22, 
+                                   multilevel_model_23, 
+                                   multilevel_model_24), 
+                                  BIC))
+
+AIC_BIC <- t(as.tibble(AIC_BIC))
+colnames(AIC_BIC) <- c("multilevel_model_17", 
+                       "multilevel_model_18", 
+                       "multilevel_model_19", 
+                       "multilevel_model_20", 
+                       "multilevel_model_21", 
+                       "multilevel_model_22", 
+                       "multilevel_model_23", 
+                       "multilevel_model_24")
+kable(t(AIC_BIC))
+```
+
+## Summary output of final model
+
+```{r}
+summary(multilevel_model_9)
+
+AIC_BIC_DIC <- cbind(AIC = sapply(list(model_2, 
+                                       multilevel_model_1, 
+                                       multilevel_model_6, 
+                                       multilevel_model_9), AIC),
+                     
+                     BIC = sapply(list(model_2, 
+                                       multilevel_model_1, 
+                                       multilevel_model_6, 
+                                       multilevel_model_9), BIC),
+                     
+                     DIC = sapply(list(multilevel_model_1, 
+                                       multilevel_model_1, 
+                                       multilevel_model_6, 
+                                       multilevel_model_9), 
+                     extractDIC))
+
+AIC_BIC_DIC <- t(as.tibble(AIC_BIC_DIC))
+AIC_BIC_DIC[3, 1] = AIC_BIC_DIC[1, 1]
+
+colnames(AIC_BIC_DIC) <- c("Best Linear Model", 
+                           "MLM (random intercept)", 
+                           "MLM (random intercept and slopes)", 
+                           "Best Multilevel Model")
+
+kable(t(AIC_BIC_DIC), digits = 2)
+```

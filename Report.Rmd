@@ -1,0 +1,418 @@
+---
+title: "To Classical Music Or Not To Classical Music"
+subtitle: "A Statistical Analysis Using Regression Techniques In Mixed Effects Modeling To Analyze Factors Influencing Quantitative Classification Of Classical Music"
+author: |
+  | Arsh Gupta
+  | Department of Statistics and Data Science, Carnegie Mellon University
+  | arshg@andrew.cmu.edu
+
+header-includes:
+  - \usepackage{setspace}\doublespacing
+  - \usepackage{float}
+
+output:
+  pdf_document:
+    includes:  
+      in_header: preamble.tex
+    toc: true
+    number_sections: true
+    toc_depth: 1
+  fig_caption: yes
+  highlight: haddock
+  number_sections: true
+  df_print: paged
+  html_document:  
+    toc: false
+    toc_depth: '3'
+    df_print: paged
+fontfamiy: mathpazo
+editor_options: null
+chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+rm(list=ls(all=TRUE))
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, eval = FALSE)
+
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60))
+options(rgl.printRglwidget = TRUE)
+
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(leaps)
+library(MASS)
+library(foreign)
+library(lme4)
+library(knitr)
+library(HLMdiag)
+library(boot)
+library(arm)
+library(car)
+```
+
+# Abstract
+
+The main goal of this study is to analyze the influence of Instrument, Harmonic Motion, and Voice Leading on individuals' classification of music as "classical" or "popular". This was accomplished by collecting data across $24$ categories from participants at the University of Pittsburgh that were evaluated on a variety of factors. The statistical modeling employed revolves around linear regression techniques in mixed level models by treating each participant as a separate group. Our final optimal model is successful in answering the research questions posed at the beginning of the study and either providing enough evidence to confirm the preliminary hypotheses or lack of to reject the same. An analysis of our results confirms that `Instrument` has the strongest effect on `Classical` ratings and that participants that rate themselves highly on the scale of their musician ability are likely to identify classical music differently than those that do not.
+
+# Introduction
+
+There is a wide diversity in the way that individuals interpret and comprehend various genres of music. Interpretation or classification of classical music, to some degree, remains subjective school of thought even among the community of musical scholars. One such scholar, Ivan Jimenez, a composer and musicologist visiting the University of Pittsburgh, sought to gain some tangible insight into this exact topic and understand what influences a listeners' identification of music as "classical" or "popular". His experiment was primarily concerned with the effect of three main design factors: `Instrument, Harmonic Motion,` and `Voice Leading`.
+
+In collecting the data and undertaking this experiment, Jimenez and his student, Vincent Rossi outlined two main research questions that they hoped to address:
+
+\begin{enumerate}
+  \item What experimental factor, or combination of factors, has the strongest influence on ratings?
+  \item Are there differences in the way that musicians and non-musicians identify classical music?
+\end{enumerate}
+
+Jimenez and Rossi also formulated some key hypotheses, which were:
+
+\begin{enumerate}
+  \item Instrument shoud have the largest influence on rating.
+  \item One particular harmonic progression, I-V-VI, might be frequently rates as classical, because it is the beginning progression for Pachelbel's Canon in D, which many people have heard. On the other hand, it is also a very common chord progression in popular music of the past $20$ years or so.
+  \item Based on previous research, contrary motion would also be frequently rated as classical.
+\end{enumerate}
+
+# Data
+
+The data for this study was collected by Ivan Jimenez, a composer and musicologist visiting the University of Pittsburgh, and his student, Vincent Rossi through a designed experiment intended to measure the influence of instrument, harmonic motion, and voice leading on listeners' identification of music as "classical" or "popular". The researchers presented $36$ musical stimuli to $70$ listeners, recruited from the population of undergraduates at the University of Pittsburgh, and asked them to rate the music on two different scales:
+
+\begin{itemize}
+  \item How classical does the music sound ($1$ to $10$, $1 = $ Not at all, $10 = $ Very classical sounding)
+  \item How popular does the music sound ($1$ to $10$, $1 = $ Not at all, $10 = $ Very popular sounding)
+\end{itemize}
+
+Listeners were told that a piece could be rated as both classical and popular, neither classical nor popular, or mostly classical and not popular (or vice versa), so that the scales should have functioned more or less independently.
+
+The data set contains the following variables:
+
++ `Classical`: How classical does the stimulus sound
+
++ `Popular`: How popular does the stimulus sound
+
++ `Subject`: Unique subject ID
+
++ `Harmony`: Harmonic Motion (4 levels)
+
++ `Instrument`: Instrument (3 levels)
+
++ `Voice`: Voice Leading (3 levels)
+
++ `Selfdeclare`: Are you a musician? (1-6, 1 = Not at all)
+
++ `OMSI`: Score on a test of musical knowledge
+
++ `X16.minus.17`: Auxiliary measure of listener's ability to distinguish classical vs popular music
+
++ `ConsInstr`: How much did you concentrate on the instrument while listening? (0-5, 0 = Not at all)
+
++ `ConsNotes`: How much did you concentrate on the notes while listening? (0-5, 0 = Not at all)
+
++ `Instr.minus.Notes`: Difference between previous two variables
+
++ `PachListen`: How familiar are you with Pachelbel's Canon in D? (0-5, 0 = Not at all)
+
++ `ClsListen`: How much do you listen to classical music? (0-5, 0 = Not at all)
+
++ `KnowRob`: Have you heard Rob Paravonian's Pachbelbel Rant (0-5, 0 = Not at all)
+
++ `KnowAxis`: Have you heard Axis of Evil's Comedy bit on the 4 Pachelbel chords in popular music? (0-5, 0 = Not at all)
+
++ `X1990s2000s`: How much do you listen to pop and rock from the 90's and 2000's? (0-5, 0 = Not at all)
+
++ `X1990s2000s.minus.1960s1970s`: Difference between previous variable and a similar variable referring to 60's and 70's pop and rock
+
++ `CollegeMusic`: Have you taken music classes in college? (0 = No, 1 = Yes)
+
++ `NoClass`: How many music classes have you taken?
+
++ `APTheory`: Did you take AP Music Theory class in High School? (0 = No, 1 = Yes)
+
++ `Composing`: Have you done any music composing? (0-5, 0 = Not at all)
+
++ `PianoPlay`: Do you play piano? (0-5, 0 = Not at all)
+
++ `GuitarPlay`: Do you play guitar? (0-5, 0 = Not at all)
+
++ `X1stInstr`: How proficient are you at your first musical instrument? (0-5, 0 = Not at all)
+
++ `X2ndInstr`: How proficient are you at your second musical instrument? (0-5, 0 = Not at all)
+
+The $36$ stimuli were chosen by completely crossing these factors:
+
+\begin{itemize}
+  \item \textbf{Instrument:} String Quarter, Piano, Electric Guitar
+  \item \textbf{Harmonic Motion:} I-V-vi, I-VI-V, I-V-IV, IV-I-V
+  \item \textbf{Voice Leading:} Contrary Motion, Parallel 3rds, Parallel 5ths
+\end{itemize}
+
+The data set contains a total of $2520$ observations and $27$ features (parameters) with two independent response variables `Classical` and `Popular`, which are ratings on a scale of $1$ to $10$. We find that there are two observations that have values for `Classical` and `Popular` as $19$ respecively, which is outside the range of acceptable values. This is likely due to human error where the participant might have been intending to enter $9$ instead of $19$.
+
+We ignore the variables `X` and `first12` from the data set for the purposes of this analysis since they do not provide us with any meaningful information. Thus, we obtain a total of $22$ possible predictors which will be considered in building the optimal model.
+
+The primarily variables of interest include: `Subject, Harmony, Instrument, Voice, Selfdelare, OMSI, X16.minus.X17, ConsInstr, ConsNotes, Inst.minus.Notes, ClsListen, KnowRob, KnowAxis, X1990s2000s, X1990s200s.minus.1960s1970s, CollegeMusic, NoClass, APTheory, Composing, PianoPlay, GuitarPlay, X1stInstr, X2ndInstr`.
+
+Most of the covariates above are factor variables with six levels so we do not apply any transformations to the data in order to preserve that. Additionally, there does not seem to be any strong skewness within the data set.
+
+# Methods
+
+## Initial steps
+
+The statistical framework of the analysis in this study is primarily concerned with linear modeling around multivariate regression techniques and mixed effects models.
+
+As a preliminary starting point, we create a basic ordinary least squares linear regression model to analyze the influence of the three main design variables `Instrument, Harmony,` and `Voice` on `Classical` ratings. At various stages along the analysis, we adopt Analysis of Variance (ANOVA) tests to evaluate model performance both by itself and in comparison to other models.
+
+## Incorporating group level effects
+
+As the next step, we transform the OLS model into a multi-level/mixed effects model by treating every participant (aka `Subject`) as a separate group since we have $36$ observations for each participant. We then introduce a different intercept for each group/participant (`Subject`). The performance of this mixed effects model is assessed on multiple factors, including conditional and marginal residual plots, normality of the standardized residuals and standardized random effects, and fixed and random effect variances $\hat{\tau}^2_j$ and $\hat{\sigma}^2$.
+
+At various stages in the analysis, we compare multiple mixed effects model in order to evaluate the marginal effect of the one fixed or random effects covariate in model performance. We do this by comparing the Akaike Information Criterion (AIC), Bayesian Information Criterion (BIC), and Deviance Information Criteria (DIC). These have been briefly elaborated below:
+
+### Akaike Information Criterion (AIC) {-}
+
+AIC is a relative measure of the quality of a model for a given set of data and helps in model selection among a finite set of models. It uses the maximized likelihood estimate and the number of parameters to estimate the information lost in the model. The AIC measure gives a trade-off between the model accuracy and model complexity thus preventing overfitting.
+
+The formula to define AIC is given as follows:
+
+\begin{align*}
+  AIC = -2 \cdot \ln(\hat{L}) + 2K
+\end{align*}
+
+where
+
++ $K$: Number of estimated parameters
+
++ $\hat{L}$: Maximized value of the log-likelihood function of the model
+
+### Bayesian Information Criterion (BIC) {-}
+
+Similar to AIC, BIC is also a criterion for model selection. It is closely related to AIC in using the likelihood function. The way it differs to AIC is by introducing a penalty term for the number of parameters in the model since it is possible to increase the likelihood by adding parameters which also results in overfitting.
+
+The formula for BIC is defined as follows:
+
+\begin{align*}
+  BIC = -2 \cdot \ln(\hat{L}) + \ln(K)
+\end{align*}
+
+where
+
++ $K$: Number of estimated parameters
+
++ $\hat{L}$: Maximized value of the log-likelihood function of the model
+
+### Deviance Information Criteria (DIC) {-}
+
+DIC is a similar criterion to AIC used for model selection in Bayesian inference and multi-level modeling where the degrees of freedom (or the number of parameters) is not fixed. It considers the effective degrees of freedom.
+
+The formula for DIC is defined as follows:
+
+\begin{align*}
+  DIC = -2(\hat{L}) + 2k_{eff}
+\end{align*}
+
+where
+
++ $k_{eff}$: Effective degrees of freedom, estimated from the curvature of the likelihood, which is driven by the size of the $\tau^2$'s
+
++ $\hat{L}$: Log-likelihood based on the marginal model $f\left(\underline{Y}|\underline{\beta}, \underline{\omega}, \sigma^2\right)$
+
+Lower AIC and BIC values indicates less information lost hence a better model. Though these two measures are derived from a different perspective, they are closely related. Apparently, the only difference is, BIC considers the number of observations in the formula, which AIC does not. Though BIC is always higher than AIC, lower the value of this two measure, better the model.
+
+All of AIC, BIC, and DIC are helpful statistical tools when performing variable selection. When evaluating the marginal effect of a fixed level covariate in model performance, we primarily look at AIC and BIC, and when evaluating the effect of a random effect covariate, we compare the DIC.
+
+## Assessing effect of other predictors
+
+Once we've incorporated the three main design factors `Instrument, Harmony,` and `Voice` in our model as the appropriate fixed and random effects covariates, we evaluate if any of the remaining $19$ predictors would be appropriate to include as fixed or random effects covariates. First, we check which of them would improve our model by adding them as fixed effects covariates. We do this by performing `regsubsets()` (an R function used for model/variable selection using the exhausitive search, forward selection, or backward selection methods) on the fixed effects part of our optimal multi-level `lmer()` model by treating it as a separate OLS `lm()` model. After performing `regsubsets()` and comparing AIC/BIC, we add the covariates that minimize AIC and BIC as fixed effects covariates in the mixed effects model.
+
+With the fixed effects now fixed, we evaluate if there should be any changes made to the random effects part of our model. We do this by implementing an idea similar to forward selection while minimizing DIC. Taking a base model with no new random effects covariates added, we create new models each containing one new random effects covariate from the fixed level covariates added at the previous step and compare DIC with the base level model.
+
+## Answering the research questions
+
+The first research question is concerned with analying which combination of factor(s) has the strongest influence on `Classical` rating scores, which has can be addressed by comparing the coefficient estimates, standard error values, and t-statistic values (also referred to as t-values) of our final mixed effects model generated using the methodology outlined above.
+
+The second research question focuses on whether there are any differences in the way that musicians and non-musicians identify classical music. This has been done by dichotomizing the variable `Selfdeclare`, which is a factor variable wherein the participants ranked themselves on a scale of $1$ to $6$ whether they are a musician or not ($1$ being not at all and $6$ being an adept musician). The process for this has been described in greater detail in the following sub-section titled "Dichotomization of `Selfdeclare`".
+
+## Dichotomization of `Selfdeclare`
+
+Through some vanilla exploratory data anlaysis, we find that about $60\%$ of the survey participants have selected a value of $1$ or $2$ for `Selfdeclare`, and the remaining $40\%$ have selected $3, 4,$ or $5$. Thus, in order to address the second research question, we dichotomize that predictor by creating a new variable called `self_declared_musician` where:
+
++ `self_declared_musician = yes`, if `Selfdeclare` $\in \{1, 2\}$
+
++ `self_declared_musician = no`, if `Selfdeclare` $\in \{3, 4, 5\}$
+
+We then replace the variable `Selfdeclare` with as the fixed level covariate in our optimal mixed effects model for the purpose of this exercise.
+
+Then, in order to see which interactions with `self_declared_musician` on the fixed level are useful, we create new models where each of them contains an interaction with `self_declared_musician` and one of the other fixed level covariates, and compare the AIC and BIC with the base level model which has no interactions with `self_declared_musician`. If any model containing interaction with `self_declared_musician` has a lower AIC/BIC than the base-level model, then it would suggest that the dichotomized musician variable is sensitive to interaction with that other fixed level covariate.
+
+# Results
+
+We arrive at the optimal model that best addresses our research questions and captures the fixed and random effects of all significant covariates in predicting the `Classical` ratings as follows:
+
+## Final Model
+
+We get the final model as follows (in R format):
+
+`Classical ~ Instrument + Harmony + Voice + Harmony:Voice + Selfdeclare + KnowAxis + X1990s2000s.minus.1960s1970s + X2ndInstr + (1 + Instrument + Harmony + KnowAxis | Subject)`
+
+We attempt add the variable `GuitarPlay` after our analyses with variable selection using `regsubsets()`, ANOVA tests, and comparing AIC/BIC/DIC, but we find that R automatically drops it due to the fixed-effect model matrix being rank deficient.
+
+Figure 1 shows the fixed and random effects variances for the different covariates.
+
+![Fixed and Random Effects Variances from `summary()` output in R](model_summary_table.png)
+
+Figure 2 shows the AIC, BIC, and DIC for four key models across the entire process of arriving at our final optimal model.
+
+![AIC, BIC, DIC for different models](models_stats.png){width=70%}
+
+## Research Questions
+
+We have that for our final model
+
+Upon analyzing the effect of individual harmonic motion levels on the `Classical` ratings, we see that the covariate `HarmonicI-V-VI` has the largest coefficient estimate $(2.47)$ and t-value $(3.71)$ compared to the other two levels of Harmonic Motion ($0.53$ and $1.10$ for `HarmonicI-V-IV`, and $0.58$ and $1.10$ for `HarmonicIV-I-V`).
+
+Among the fixed level covariates for factor variable Voice Leading, we find that the level `Voicepar3rd` has a coefficient estimate $-0.155$ and t-value $-0.338$, and the level `Voicepar5th` has a coefficient estimate $0.478$ and t-value $1.034$.
+
+We find that the models containing interaction terms `self_declared_musician:Instrument` and `self_declared_musician:Harmony` have a lower AIC ($1176.912$ and $1176.076$ respectively) than the model not containing any interaction terms with `self_declared_musician` and the other fixed level covariates. Out of these two, the model containing the interaction term `self_declared_musician:Instrument` has a lower BIC $(1365.921)$.
+
+# Discussion
+
+## Technical Machinery and Methodology
+
+As a preliminary step, we create an OLS linear model evaluating the effect on `Classical` scores using predictors `Instrument`, `Harmony`, and `Voice`. We evaluate evidence of any significant interactions up to the third order between these three covariates and keep `Harmony:Voice` in the model after running an ANOVA test. Since we have $36$ ratings from each participant (`Subject`), we expand our previous linear model by including a random intercept for each participant (`Subject`), leaving us with what is called a repeated measures model that performs better than the preliminary OLS model.
+
+In an attempt to account for participants' personal biases across the type of instrument, harmony, or voice, it might be helpful to include random effect covariates for `Instrument`, `Harmony`, and/or `Voice`. We test this by creating models with different combinations of these random effects and comparing their DICs, which suggests that random effect covariates for `Instrument` and `Harmony` are significant. Thus, we add them to our model.
+
+So far, our model includes the fixed effects covariates `Instrument`, `Harmony`, `Voice`, and `Harmony:Voice`, and the random effects covariates `Instrument` and `Harmony` in addition to a random intercept for each group. We then check which of the remaining person covariates would improve our model by adding them as fixed effects covariates and find that predictors `Selfdeclare`, `KnowAxis`, ` X1990s2000s.minus.1960s1970s`, and `X2ndInstr` improve our model by minimizing AIC/BIC. Thus, we add them as fixed effects covariates in our mixed effects model. With the fixed effects now fixed, we evaluate if there should be any changes made to the random effects part of our model and find that the covariate `KnowAxis` should be added to the random effects part.
+
+## Final Result
+
+We have the final model as follows:
+
+## Level 1 {-}
+
+\begin{align*}
+  \text{Classical}_i = \alpha_{0j[i]} & + \alpha_{1j[i]} \cdot \text{Instrument}_i + \alpha_{2j[i]} \cdot \text{Harmony}_i + \alpha_{3j[i]} \cdot \text{KnowAxis}_{j[i]} + \alpha_4 \cdot \text{Voice}_i + \\[0.5cm]
+  & \alpha_5 \cdot (\text{Harmony}_i \times \text{Voice}_i) + \epsilon_i
+\end{align*}
+
+## Level 2 {-}
+
+\begin{align*}
+  \alpha_{0j[i]} = \beta_{00} & + \beta_{01} \cdot \text{SelfDeclare}_{j[i]} + \beta_{02} \cdot \text{X1990s2000s.minus.1960s1970s}_{j[i]} + \beta_{04} \cdot \text{X2ndInstr}_{j[i]} + \eta_{0j[i]} \\[0.5cm]
+  \alpha_{1j[i]} & = \beta_{10} + \eta_{1j[i]} \\[0.5cm]
+  \alpha_{2j[i]} & = \beta_{20} + \eta_{2j[i]} \\[0.5cm]
+  \alpha_{3j[i]} & = \beta_{30} + \eta_{3j[i]}
+\end{align*}
+
+where
+
+\textbf{Fixed Effects Covariates}
+
+The following variables are treated by the same way across each participant without any bias, so there is a constant slope for each of them across every participant.
+
++ `Instrument`: The type of instrument played can have a distinct effect in a listener's ability to classify a piece of music as classical or not.
+
++ `Harmony`: The different levels of harmonic progression can influence the listener's ability to classify music as classical or not.
+
++ `Voice`: The leading voice has an effect on the listener's ability to classify a piece of music as classical or not.
+
++ `Harmony:Voice`: This interaction term suggests as the value of either of the variables `Harmony` or `Voice` changes, it leads to a subsequent change in the value of the other variable.
+
++ `Selfdeclare`: The more likely a person is to consider themselves a musician, the less likely they are to classify a piece of music as classical keeping everything else constant.
+
++ `KnowAxis`: If a listener is familiar with Axis of Evil’s Comedy bit on the 4 Pachelbel chords in popular music, they are more likely to rate a piece of music as classical keeping other factors constant.
+
++ `X1990s2000s.minus.1960s1970s`: Keeping every other factor constant, if a listener listens to more pop and rock music from the 1960s and 1970s than from the 1990s and 2000s, they are more likely to classify music as classical.
+
++ `X2ndInstr`: Keeping other factors as constant, an increased proficiency in playing their second music instrument makes the listener less likely to rate a piece of music as classical.
+
+\textbf{Random Effects Covariates}
+
+Different participants might interpret these variables differently, or there could be an inherent bias in the way they respond to these, so we kept a different slope for every participant for the following variables.
+
++ `Instrument`
+
++ `Harmony`
+
++ `KnowAxis`
+
+\textbf{Individual Level Covariates}
+
+These variables have different values for every observation across the same participant.
+
++ `Instrument`
+
++ `Harmony`
+
++ `Voice`
+
++ `Harmony:Voice`
+
+\textbf{Group Level Covariates}
+
+These variables have the same values across a single participant (group).
+
++ `Selfdeclare`
+
++ `KnowAxis`
+
++ `X1990s2000s.minus.1960s1970s`
+
++ `X2ndInstr`
+
+## Research Question 1
+
+The researchers hypothesize that `Instrument` exerts the strongest influence among the three design factors (`Instrument, Harmonic Motion, Voice Leading`), which is confirmed by the fixed effect coefficient estimate and t-values for `Instrument` being the largest relative to the other two design factors. Hence, it is confirmed that `Instrument` does exert the strongest influence among the three design factors.
+
+Based off the high coefficient estimate and t-value for I-V-VI among the three different Harmonic Levels, we have evidence to support the fact that among the three different Harmonic Motion levels, I-V-VI has the strongest association with `Classical` ratings.
+
+Similarly, upon comparing the coefficient estimates and t-values, we find that `Voicepar5th` has a larger coefficient and t-value, confirming the hypothesis that Parallel 5ths have the strongest association with `Classical` ratings.
+
+## Research Question 2
+
+The second research question is focused around whether there are any differences in the way that musicians and non-musicians identify classical music. We have attempted to address this by dichotomizing the covariate `Selfdeclare` by re-introducing that as a new variable `self_declared_musician`, as described in the Methods section of this paper. As a refresher to the reader:
+
++ `self_declared_musician = yes`, if `Selfdeclare` $\in \{1, 2\}$
+
++ `self_declared_musician = no`, if `Selfdeclare` $\in \{3, 4, 5\}$
+
+Based on the results of the above dichotimization, we find evidence suggesting that `Instrument` and `Harmony` are sensitive to the dichotomization of `self_declared_musician` with `Instrument` being the more sensitive covariate out of the two.
+
+What this means is that the type of instrument that an individual plays could be influential towards whether they consider themselves as a musician or not. This points towards statistically significant evidence that there are differences in the way that musicians and non-musicians identify classical music. Primarily, the former's classification of classical music is influenced by the type of instrument present in a particular musical piece, whereas this is not really the case for the latter.
+
+## Key Takeaways
+
+We have some key takeaways over here. Firstly, the presence of an interaction term `Harmony:Voice` as a fixed effects covariate suggests that as the value for one of those predictors (`Harmony` or `Voice`) changes, there is a subsequent change on the other predictor. Additionally, we see that there are various variables on the fixed level that influence an individual's rating of a stimuli's classical sound, such as the instrument used, harmonic progression, leading voice, how good of a musician the individual considers themselves to be, whether they have heard of Axis of Evil's Comedy bit on the 4 Pachelbel chords in popular music or not, difference in the amount of pop and rock music they listen to from the 1990s and 2000s than from the 1960s and 1970s, and proficiency in their second musical instrument played. These results are not very surprising it would be reasonable for them to vary across each participant.
+
+As random effects covariates, we see that `Instrument`, `Harmony`, and `KnowAxis` influence an individual's rating of a stimuli's classical sound. This points towards a possible personal bias varying with the type of instrument and harmony, wherein people might vary in the degree of what they would call music played by a certain instrument or at a specific harmony classical or not, which is why we treat them on the group level. `KnowAxis` is also an indicator variable since is has only two levels, so the value for that would vary across each participant and serve as a group level covariate too. We see that the standard errors for all fixed level coefficients is less than $1$, suggesting that the final model is robust and fits the data well.
+
+Upon testing out the researchers' hypothesis if people who self-identify as musicians may be influenced by things that do not influence non-musicians, we find that there to be evidence in support of that. Specifically, we find that the type of instrument that an individual plays could be influential towards whether they consider themselves as a musician or not. We do this by dichotomizing the fixed effects covariate `Selfdeclare` and considering any significant interactions with other fixed level predictors by minimizing AIC/BIC. We find that the interaction of this new dichotomized variable is sensitive to the covariate `Instrument`.
+
+## Limitations and Future Research
+
+One of the biggest limitations of this analysis is that it ignores the qualitative aspect of the musical phenonmenon which quantification cannot fully capture. Additionally, almost every variable that the data is collected on is a factor level variable, meaning that its individual levels are treated as discrete levels in the statistical analysis that compromises on interpretability to some degree. One way to address this could be to include more continuous predictors that measure data along a spectrum or range as opposed to discrete levels.
+
+While the study does a good job of accounting for personal biases across the participants by including group level intercepts, and the way each person might be prone to interpreting a certain type of musical piece as being classical or not by introducing relevant random effects, there is still a possibility of hidden variables at play that might be causing some type of bias to lurk in the final results.
+
+A final limitation of this study is that the final results and findings are volatile to the methodology and approach adopted by a researcher. There is no guarantee that another researcher conducting a similar study and evaluating the same research questions might arrive at the same optimal model or results that this paper does.
+
+One way this could be addressed by future developments on this study is by considering more robust mechanisms that could generate standardized and reproducible results, possibly within the realm of non-linear predictive modelling.
+
+# References
+
+1. “Deviance Information Criterion.” Wikipedia, Wikimedia Foundation, 21 Dec. 2021, https://en.wikipedia.org/wiki/Deviance_information_criterion#.
+
+2. Datalab, Analyttica. “Akaike Information Criterion(AIC).” Medium, Medium, 7 Jan. 2019, https://medium.com/@analyttica/akaike-information-criterion-aic-7a4b58bce206.
+
+3. Datalab, Analyttica. “What Is Bayesian Information Criterion (BIC)?” Medium, Medium, 16 Jan. 2019, https://medium.com/@analyttica/what-is-bayesian-information-criterion-bic-b3396a894be6.
+
+4. Junker, Brian. "Multilevel Models - The Basics." Applied Linear Models. Carnegie Mellon University. Pittsburgh. Lecture.
+
+5. Junker, Brian. "Multilevel Models - The Basics II." Applied Linear Models. Carnegie Mellon University. Pittsburgh. Lecture.
+
+6. Junker, Brian. "Random slopes, correlation & centering, sample size." Applied Linear Models. Carnegie Mellon University. Pittsburgh. Lecture.
+
+7. Junker, Brian. "mlm residuals." Applied Linear Models. Carnegie Mellon University. Pittsburgh. Lecture.
+
+8. Junker, Brian. "Lmer estimation and model selection." Applied Linear Models. Carnegie Mellon University. Pittsburgh. Lecture.
